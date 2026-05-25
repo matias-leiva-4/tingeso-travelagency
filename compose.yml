@@ -130,11 +130,15 @@ services:
     build:
       context: ./travel-agency
       args:
-        # El navegador llama al backend a través del LB de backend.
-        VITE_API_BASE_URL: http://localhost:8090
-        VITE_KEYCLOAK_URL: http://keycloak:9090
-        VITE_KEYCLOAK_REALM: travel-agency
-        VITE_KEYCLOAK_CLIENT_ID: travel-agency-frontend1
+        # IMPORTANTE: estos valores se EMBEBEN en el bundle JS en build-time.
+        # El navegador del usuario los lee, asi que tienen que ser URLs
+        # publicamente accesibles desde su maquina (no nombres de red Docker).
+        #   - En local: http://localhost:8090  y  http://keycloak:9090 (con /etc/hosts)
+        #   - En cloud: http://<IP_PUBLICA>:8090  y  http://<IP_PUBLICA>:9090
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8090}
+        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-http://keycloak:9090}
+        VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-travel-agency}
+        VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-travel-agency-frontend1}
     restart: unless-stopped
     deploy:
       replicas: 3
