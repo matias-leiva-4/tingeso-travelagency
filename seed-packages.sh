@@ -195,20 +195,6 @@ create_package '{
   "totalSlots": 20
 }'
 
-# Paquete 10
-create_package '{
-  "name": "Desierto de Atacama Estrellas",
-  "destination": "San Pedro de Atacama, Chile",
-  "description": "El cielo mas despejado del mundo: observatorio astronomico, geyseres del Tatio, laguna Cejar.",
-  "startDate": "2026-07-01",
-  "endDate": "2026-07-06",
-  "price": 350000,
-  "packageType": "Aventura",
-  "includedServices": "Vuelos a Calama, traslados, hotel boutique, tour astronomico, desayunos",
-  "restrictions": "Edad minima 8 anios. Recomendado aclimatarse 1 dia por altura.",
-  "totalSlots": 16
-}'
-
 echo ""
 echo "Listo. Verificando..."
 curl -s "${API_URL}/api/packages" | grep -o '"name":"[^"]*' | cut -d'"' -f4 | nl
