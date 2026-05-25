@@ -13,12 +13,23 @@
 
 set -e
 
-KEYCLOAK_URL="http://keycloak:9090"
-API_URL="http://localhost:8090"
-REALM="travel-agency"
-CLIENT_ID="travel-agency-frontend1"
-ADMIN_USER="admin@admin.cl"
-ADMIN_PASS="admin123"
+# Configurables via env vars. Defaults para uso local; para cloud
+# exportar las variables antes de correr el script.
+#
+# Local:
+#   ./seed-packages.sh
+#
+# Cloud (en el droplet, via SSH):
+#   KEYCLOAK_URL=http://localhost:9090 ./seed-packages.sh
+#
+# Cloud (desde tu Mac contra el droplet):
+#   KEYCLOAK_URL=http://134.122.4.218:9090 API_URL=http://134.122.4.218:8090 ./seed-packages.sh
+KEYCLOAK_URL="${KEYCLOAK_URL:-http://keycloak:9090}"
+API_URL="${API_URL:-http://localhost:8090}"
+REALM="${REALM:-travel-agency}"
+CLIENT_ID="${CLIENT_ID:-travel-agency-frontend1}"
+ADMIN_USER="${ADMIN_USER:-admin@admin.cl}"
+ADMIN_PASS="${ADMIN_PASS:-admin123}"
 
 echo "Obteniendo token de admin..."
 TOKEN=$(curl -s -X POST "${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token" \
