@@ -7,7 +7,13 @@ import "./index.css";
 createRoot(document.getElementById("root")).render(
   <ReactKeycloakProvider
     authClient={keycloak}
-    initOptions={{ pkceMethod: "S256", checkLoginIframe: false }}
+    initOptions={{
+      onLoad: "check-sso",
+      pkceMethod: "S256",
+      checkLoginIframe: false,
+      silentCheckSsoRedirectUri: window.location.origin + "/silent-check-sso.html",
+      silentCheckSsoFallback: false,
+    }}
   >
     <App />
   </ReactKeycloakProvider>,
