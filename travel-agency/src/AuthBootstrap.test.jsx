@@ -2,8 +2,13 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AuthBootstrap from "./AuthBootstrap.jsx";
 
+let providerInitOptions;
+
 vi.mock("@react-keycloak/web", () => ({
-  ReactKeycloakProvider: ({ children }) => children,
+  ReactKeycloakProvider: ({ children, initOptions }) => {
+    providerInitOptions = initOptions;
+    return children;
+  },
 }));
 
 vi.mock("./App.jsx", () => ({
@@ -16,6 +21,7 @@ vi.mock("./services/keycloak.js", () => ({
 
 describe("AuthBootstrap", () => {
   beforeEach(() => {
+    providerInitOptions = undefined;
     vi.useFakeTimers();
   });
 
@@ -38,5 +44,12 @@ describe("AuthBootstrap", () => {
     expect(
       screen.getByText(/Keycloak también debe permitir redirecciones/),
     ).toBeInTheDocument();
+  });
+
+  it("desactiva PKCE si la aplicacion se sirve sin HTTPS", () => {
+    render(<AuthBootstrap />);
+
+    expect(providerInitOptions.pkceMethod).toBe(false);
+    expect(providerInitOptions.checkLoginIframe).toBe(false);
   });
 });

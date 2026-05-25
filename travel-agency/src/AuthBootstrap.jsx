@@ -7,6 +7,32 @@ import keycloak from "./services/keycloak.js";
 const keycloakUrl =
   import.meta.env.VITE_KEYCLOAK_URL || "http://localhost:9090";
 const initializationTimeoutMs = 12000;
+const isSecureContext = window.isSecureContext === true;
+
+function installHttpRandomUuidFallback() {
+  if (
+    isSecureContext ||
+    typeof globalThis.crypto?.randomUUID === "function" ||
+    typeof globalThis.crypto?.getRandomValues !== "function"
+  ) {
+    return;
+  }
+
+  globalThis.crypto.randomUUID = () => {
+    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"))
+      .join("")
+      .replace(
+        /^(.{8})(.{4})(.{4})(.{4})(.{12})$/,
+        "$1-$2-$3-$4-$5",
+      );
+  };
+}
+
+installHttpRandomUuidFallback();
 
 function AuthBootstrap() {
   const [authenticationState, setAuthenticationState] = useState("starting");
@@ -59,13 +85,13 @@ function AuthBootstrap() {
     );
   }
 
-  // HTTP sin TLS puede bloquear el iframe de cookies de terceros de Keycloak.
+  // Sobre HTTP remoto el navegador no expone SubtleCrypto, requerido por PKCE.
   return (
     <ReactKeycloakProvider
       authClient={keycloak}
       initOptions={{
         onLoad: "login-required",
-        pkceMethod: "S256",
+        pkceMethod: isSecureContext ? "S256" : false,
         checkLoginIframe: false,
       }}
       onEvent={handleKeycloakEvent}
