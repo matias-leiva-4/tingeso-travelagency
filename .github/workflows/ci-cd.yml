@@ -1,0 +1,123 @@
+# ──────────────────────────────────────────────────────────────────────────────
+#  CI/CD - TravelAgency
+#
+#  Workflow que cumple los 4 pasos exigidos por la rubrica de TINGESO:
+#    1. Obtener el codigo fuente desde GitHub  (actions/checkout)
+#    2. Ejecutar pruebas unitarias del backend (./mvnw test)
+#    3. Construir imagenes Docker de frontend y backend (docker buildx)
+#    4. Publicar las imagenes en Docker Hub (docker push)
+#
+#  Se dispara en:
+#    - push a main          → corre todo + push a Docker Hub
+#    - pull_request a main  → solo tests (no toca Docker Hub)
+#    - manual (workflow_dispatch) → util para re-publicar bajo demanda
+#
+#  Secrets requeridos en el repo (Settings → Secrets and variables → Actions):
+#    DOCKERHUB_USERNAME  → tu usuario de Docker Hub (matiasleiva4)
+#    DOCKERHUB_TOKEN     → Access Token generado en Docker Hub
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: CI/CD - TravelAgency
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 1 — Tests del backend
+  #
+  # Corre siempre (push y PR). Si los tests fallan, el job de build/push no
+  # se ejecuta. Asi garantizamos que nunca subimos a Docker Hub una imagen
+  # que no pasa pruebas.
+  # ────────────────────────────────────────────────────────────────────────────
+  backend-tests:
+    name: Backend tests (JUnit + JaCoCo)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Make mvnw executable
+        working-directory: ./backend
+        run: chmod +x mvnw
+
+      - name: Run unit tests with coverage
+        working-directory: ./backend
+        run: ./mvnw -B clean test
+
+      - name: Upload JaCoCo report as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco/
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 2 — Build & push de imagenes Docker
+  #
+  # Depende del job de tests (needs:) → solo corre si los tests pasaron.
+  # Solo se ejecuta en push a main (no en PRs) para no inflar Docker Hub.
+  # ────────────────────────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & push Docker images
+    needs: backend-tests
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ── Backend ──────────────────────────────────────────────────────────
+      - name: Build & push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/travelagency-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/travelagency-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Frontend ─────────────────────────────────────────────────────────
+      # Los VITE_* se embeben en el bundle en build-time. Apuntan a la IP
+      # publica del droplet DigitalOcean donde corre el stack productivo.
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./travel-agency
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/travelagency-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/travelagency-frontend:${{ github.sha }}
+          build-args: |
+            VITE_API_BASE_URL=http://134.122.4.218:8090
+            VITE_KEYCLOAK_URL=http://134.122.4.218:9090
+            VITE_KEYCLOAK_REALM=travel-agency
+            VITE_KEYCLOAK_CLIENT_ID=travel-agency-frontend1
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
