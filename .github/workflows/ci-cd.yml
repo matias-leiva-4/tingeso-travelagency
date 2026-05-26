@@ -57,7 +57,10 @@ jobs:
 
       - name: Run unit tests with coverage
         working-directory: ./backend
-        run: ./mvnw -B clean test
+        # Usamos 'verify' (no solo 'test') porque el reporte HTML de JaCoCo
+        # esta bindeado a la fase 'verify' en el pom.xml. Con 'test' los
+        # tests corren pero no se genera target/site/jacoco/index.html.
+        run: ./mvnw -B clean verify
 
       - name: Upload JaCoCo report as artifact
         if: always()
