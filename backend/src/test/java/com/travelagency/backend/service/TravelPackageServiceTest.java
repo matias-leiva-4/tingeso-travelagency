@@ -329,9 +329,14 @@ class TravelPackageServiceTest {
 
     @Test
     void searchPackages_delegatesToRepository() {
+        // El service ahora sustituye nulls numericos/fechas por sentinelas
+        // (0, Long.MAX_VALUE, LocalDate(1900,1,1), LocalDate(9999,12,31))
+        // para evitar el bug de Postgres + Hibernate 6 con parametros null.
         when(packageRepository.searchPackages(
                 any(LocalDate.class), eq("Atacama"),
-                isNull(), isNull(), isNull(), isNull(), isNull()))
+                eq(0L), eq(Long.MAX_VALUE),
+                eq(LocalDate.of(1900, 1, 1)), eq(LocalDate.of(9999, 12, 31)),
+                isNull()))
                 .thenReturn(List.of(samplePackage));
 
         List<PackageResponse> result =
@@ -341,14 +346,19 @@ class TravelPackageServiceTest {
         assertThat(result.get(0).getDestination()).isEqualTo("Atacama");
         verify(packageRepository).searchPackages(
                 any(LocalDate.class), eq("Atacama"),
-                isNull(), isNull(), isNull(), isNull(), isNull());
+                eq(0L), eq(Long.MAX_VALUE),
+                eq(LocalDate.of(1900, 1, 1)), eq(LocalDate.of(9999, 12, 31)),
+                isNull());
     }
 
     @Test
     void searchPackages_noFilters_returnsAll() {
+        // Sin filtros: strings null, numericos/fechas sustituidos por sentinelas.
         when(packageRepository.searchPackages(
                 any(LocalDate.class), isNull(),
-                isNull(), isNull(), isNull(), isNull(), isNull()))
+                eq(0L), eq(Long.MAX_VALUE),
+                eq(LocalDate.of(1900, 1, 1)), eq(LocalDate.of(9999, 12, 31)),
+                isNull()))
                 .thenReturn(List.of(samplePackage));
 
         List<PackageResponse> result =

@@ -204,10 +204,21 @@ public class TravelPackageService {
             LocalDate endDate,
             String packageType) {
 
+        // Sentinel values para evitar parametros null en la query.
+        // Postgres + Hibernate 6 no infiere tipos para parametros null y
+        // tira "could not determine data type" o "cannot cast bytea to X".
+        // Strings se mantienen como null (la query usa CAST(.. AS string) IS NULL).
+        Long effectiveMinPrice = minPrice != null ? minPrice : 0L;
+        Long effectiveMaxPrice = maxPrice != null ? maxPrice : Long.MAX_VALUE;
+        LocalDate effectiveStartDate = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
+        LocalDate effectiveEndDate = endDate != null ? endDate : LocalDate.of(9999, 12, 31);
+
         return packageRepository.searchPackages(
                         LocalDate.now(),   // "hoy" como parámetro → testeable
-                        destination, minPrice, maxPrice,
-                        startDate, endDate, packageType)
+                        destination,
+                        effectiveMinPrice, effectiveMaxPrice,
+                        effectiveStartDate, effectiveEndDate,
+                        packageType)
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());

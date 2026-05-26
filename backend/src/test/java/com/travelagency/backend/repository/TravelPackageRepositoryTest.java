@@ -64,11 +64,22 @@ class TravelPackageRepositoryTest {
     }
 
     // ── searchPackages (query JPQL personalizada) ─────────────────────────────
+    //
+    // Nota: los parametros numericos y de fecha NO admiten null en esta query.
+    // El service los sustituye por sentinelas (0, MAX, 1900-01-01, 9999-12-31)
+    // para evitar el bug de Postgres + Hibernate 6 con parametros null.
+    // Aqui replicamos esa logica en los tests.
+
+    private static final Long ANY_MIN_PRICE = 0L;
+    private static final Long ANY_MAX_PRICE = Long.MAX_VALUE;
+    private static final LocalDate ANY_START = LocalDate.of(1900, 1, 1);
+    private static final LocalDate ANY_END   = LocalDate.of(9999, 12, 31);
 
     @Test
     void searchPackages_byDestination_returnsMatchingPackages() {
         List<TravelPackageEntity> result = packageRepository.searchPackages(
-                LocalDate.now(), "atacama", null, null, null, null, null);
+                LocalDate.now(), "atacama",
+                ANY_MIN_PRICE, ANY_MAX_PRICE, ANY_START, ANY_END, null);
 
         assertThat(result)
                 .isNotEmpty()
@@ -78,7 +89,8 @@ class TravelPackageRepositoryTest {
     @Test
     void searchPackages_byMinPrice_excludesCheaperPackages() {
         List<TravelPackageEntity> result = packageRepository.searchPackages(
-                LocalDate.now(), null, 200_000L, null, null, null, null);
+                LocalDate.now(), null,
+                200_000L, ANY_MAX_PRICE, ANY_START, ANY_END, null);
 
         // El paquete de 120.000 no debe aparecer
         assertThat(result).extracting(TravelPackageEntity::getPrice)
@@ -88,7 +100,8 @@ class TravelPackageRepositoryTest {
     @Test
     void searchPackages_byMaxPrice_excludesExpensivePackages() {
         List<TravelPackageEntity> result = packageRepository.searchPackages(
-                LocalDate.now(), null, null, 150_000L, null, null, null);
+                LocalDate.now(), null,
+                ANY_MIN_PRICE, 150_000L, ANY_START, ANY_END, null);
 
         assertThat(result)
                 .isNotEmpty()
@@ -98,7 +111,8 @@ class TravelPackageRepositoryTest {
     @Test
     void searchPackages_byPackageType_returnsOnlyMatchingType() {
         List<TravelPackageEntity> result = packageRepository.searchPackages(
-                LocalDate.now(), null, null, null, null, null, "AVENTURA");
+                LocalDate.now(), null,
+                ANY_MIN_PRICE, ANY_MAX_PRICE, ANY_START, ANY_END, "AVENTURA");
 
         assertThat(result)
                 .isNotEmpty()
@@ -108,7 +122,8 @@ class TravelPackageRepositoryTest {
     @Test
     void searchPackages_neverReturnsCancelledOrSoldOut() {
         List<TravelPackageEntity> result = packageRepository.searchPackages(
-                LocalDate.now(), null, null, null, null, null, null);
+                LocalDate.now(), null,
+                ANY_MIN_PRICE, ANY_MAX_PRICE, ANY_START, ANY_END, null);
 
         assertThat(result).extracting(TravelPackageEntity::getStatus)
                 .doesNotContain(PackageStatus.CANCELLED, PackageStatus.SOLD_OUT);
@@ -117,7 +132,8 @@ class TravelPackageRepositoryTest {
     @Test
     void searchPackages_onlyReturnsFuturePackages() {
         List<TravelPackageEntity> result = packageRepository.searchPackages(
-                LocalDate.now(), null, null, null, null, null, null);
+                LocalDate.now(), null,
+                ANY_MIN_PRICE, ANY_MAX_PRICE, ANY_START, ANY_END, null);
 
         assertThat(result)
                 .allMatch(p -> !p.getStartDate().isBefore(LocalDate.now()));
