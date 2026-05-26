@@ -27,7 +27,6 @@ on:
   workflow_dispatch: {}
 
 jobs:
-
   # ────────────────────────────────────────────────────────────────────────────
   # Job 1 — Tests del backend
   #
@@ -43,15 +42,13 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up JDK 24
-        # Java 24 es necesario porque Spring Boot 4 trae dependencias con
-        # class file version 68. Una JVM 21 no puede cargarlas y cualquier
-        # test que dependa de Spring Context falla con
-        # "Unsupported class file major version 68".
+      - name: Set up JDK 17 (Temurin)
+        # Misma version que el proyecto usa localmente en IntelliJ y
+        # que declara el pom.xml en <java.version>17</java.version>.
         uses: actions/setup-java@v4
         with:
-          java-version: '24'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
           cache: maven
 
       - name: Make mvnw executable
