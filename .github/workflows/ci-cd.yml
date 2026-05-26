@@ -43,10 +43,14 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 24
+        # Java 24 es necesario porque Spring Boot 4 trae dependencias con
+        # class file version 68. Una JVM 21 no puede cargarlas y cualquier
+        # test que dependa de Spring Context falla con
+        # "Unsupported class file major version 68".
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '24'
           distribution: 'temurin'
           cache: maven
 
